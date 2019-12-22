@@ -1,13 +1,22 @@
 #include <MaxMatrix.h>
+#include <LiquidCrystal.h>
 
-// Sonic sensor
-const int triggerPin = 9;
-const int echoPin = 10;
+// Sonic distance sensor
+const int DISTANCE_SENSOR_TRIGGER_PIN = 8;
+const int DISTANCE_SENSOR_ECHO_PIN = 9;
 
-// MAX7219
-const int dinPin = 5;
-const int csPin = 6;
-const int clockPin = 7;
+// LCD Screen
+const int LCD_RS_PIN = 2;
+const int LCD_ENABLE_PIN = 3;
+const int LCD_D4_PIN = 10;
+const int LCD_D5_PIN = 11;
+const int LCD_D6_PIN = 12;
+const int LCD_D7_PIN = 13;
+
+// MAX7219 Matrix display
+const int MAX_MATRIX_DIN_PIN = 5;
+const int MAX_MATRIX_CS_PIN = 6;
+const int MAX_MATRIX_CLOCK_PIN = 7;
 
 // Rendering constants
 const int CAR_WIDTH = 2; // columns
@@ -15,36 +24,44 @@ const int MATRIX_WIDTH = 8; // columns;
 const int MATRIX_HEIGHT = 8; // rows
 
 // Distance config
-const int MIN_DISTANCE = 10; // cm
-const int MAX_DISTANCE = 50; // cm
-const int RANGE = MAX_DISTANCE - MIN_DISTANCE; // cm
-const int SEGMENT_DISTANCE = RANGE / MATRIX_HEIGHT; // cm per pixel
+const int MIN_DISTANCE = 50; // cm
+const int MAX_DISTANCE = 150; // cm
+const int DISTANCE_RANGE = MAX_DISTANCE - MIN_DISTANCE; // cm
+const int SEGMENT_DISTANCE = DISTANCE_RANGE / MATRIX_HEIGHT; // cm per pixel
 
 // Blink
 const int BLINK_CYCLE_TIME = 1500; // ms
 
-MaxMatrix matrixView(dinPin, csPin, clockPin, 1);
+// String values
+const String CURRENT_READING = "Distance: ";
+const String CM = "cm";
+const String TARGET_DISTANCE = "Target: ";
+
+MaxMatrix matrixView(MAX_MATRIX_DIN_PIN, MAX_MATRIX_CS_PIN, MAX_MATRIX_CLOCK_PIN, 1);
+LiquidCrystal lcd(LCD_RS_PIN, LCD_ENABLE_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
 
 void setup() {
-  pinMode(triggerPin, OUTPUT);
-  pinMode(echoPin, INPUT);
+  pinMode(DISTANCE_SENSOR_TRIGGER_PIN, OUTPUT);
+  pinMode(DISTANCE_SENSOR_ECHO_PIN, INPUT);
 
   matrixView.init();
   matrixView.setIntensity(5);
+
+  lcd.begin(16, 2);
 
   Serial.begin(9600);
 }
 
 int calculateDistance() {
-  digitalWrite(triggerPin, LOW);
+  digitalWrite(DISTANCE_SENSOR_TRIGGER_PIN, LOW);
   delayMicroseconds(2);
   
-  digitalWrite(triggerPin, HIGH);
+  digitalWrite(DISTANCE_SENSOR_TRIGGER_PIN, HIGH);
   delayMicroseconds(10);
   
-  digitalWrite(triggerPin, LOW);
+  digitalWrite(DISTANCE_SENSOR_TRIGGER_PIN, LOW);
 
-  const int duration = pulseIn(echoPin, HIGH);
+  const int duration = pulseIn(DISTANCE_SENSOR_ECHO_PIN, HIGH);
   const int distance = duration * 0.034 / 2;
 
   return distance;
@@ -67,14 +84,20 @@ void updateDisplay(int distance) {
   matrixView.setDot(0,7, true);
   matrixView.setDot(7, 0, true);
   matrixView.setDot(7, 7, true);
-
-  
   
   drawCar(carPosX(), carPosY(distance));  
 }
 
+void updateLcd(int distance) {
+  lcd.clear();
+  
+  lcd.print(CURRENT_READING + distance + CM);
+  lcd.setCursor(0, 1);
+  lcd.print(TARGET_DISTANCE + MIN_DISTANCE + CM);
+}
+
 int carPosY(int distance) {
-  return distance % SEGMENT_DISTANCE;
+  return (distance - MIN_DISTANCE) / SEGMENT_DISTANCE;
 }
 
 int carPosX() {
@@ -122,6 +145,8 @@ void blinkColumn(int column) {
 
 void loop() {
   int distance = calculateDistance();
+  
   updateDisplay(distance);
-  delay(250);
+  updateLcd(distance);
+  delay(500);
 }

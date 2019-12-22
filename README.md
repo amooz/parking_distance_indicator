@@ -5,3 +5,6 @@ Components used:
 - Arduino Uno
 - MAX7219 display
 - Ultrasonic sensor
+
+Dependencies:
+- [MaxMatrix](https://github.com/riyas-org/max7219)
